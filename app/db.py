@@ -1,12 +1,22 @@
-"""SQLAlchemy engine/session + models. SQLite locally, Postgres (DATABASE_URL) in production."""
+"""SQLAlchemy engine/session + models. SQLite locally, Postgres (DATABASE_URL) in production.
+
+Production Postgres is shared across multiple Nivor apps on the same Railway
+project (cost-minimizing). Each app gets its own Postgres *schema* rather
+than the default `public` schema so generic table names can't collide across
+apps — this bit ai-chatbot-engine in production once (a shared `public.users`
+table caused `create_all()` to silently skip creating this app's columns).
+SQLite has no schema concept, so this only applies against Postgres/production.
+"""
 from datetime import datetime
 
-from sqlalchemy import JSON, Column, DateTime, Float, Integer, String, create_engine
+from sqlalchemy import JSON, Column, DateTime, Float, Integer, MetaData, String, create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .config import config
 
-Base = declarative_base()
+SCHEMA_NAME = "predictive_analytics"
+_metadata = MetaData(schema=SCHEMA_NAME) if config.is_production else MetaData()
+Base = declarative_base(metadata=_metadata)
 
 
 class ModelRun(Base):
@@ -47,6 +57,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
 
 def init_db():
+    if config.is_production:
+        with _engine.connect() as conn:
+            conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {SCHEMA_NAME}"))
+            conn.commit()
     Base.metadata.create_all(bind=_engine)
 
 
