@@ -7,6 +7,9 @@ venv/
 .pytest_cache/
 *.joblib
 *.pkl
+*.db
 build/
 dist/
+node_modules/
+frontend_dist/
 *.log

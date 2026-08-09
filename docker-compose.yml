@@ -1,22 +1,41 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: predictive-analytics-platform-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=mlplatform
+      - POSTGRES_PASSWORD=mlplatform
+      - POSTGRES_DB=predictive_analytics_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - ml_network
+
   ml-platform:
     build: .
     container_name: predictive-analytics-platform
     restart: always
+    depends_on:
+      - postgres
     ports:
-      - "3001:3001"
+      - "8000:8000"
     environment:
-      - MODEL_VERSION=1.0.0
-      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+      - DATABASE_URL=postgresql://mlplatform:mlplatform@postgres:5432/predictive_analytics_platform
+      - RETRAIN_INTERVAL_MINUTES=30
     volumes:
-      - ml_data:/app/data
+      - ml_model:/app
     networks:
       - ml_network
 
 volumes:
-  ml_data:
+  pg_data:
+  ml_model:
 
 networks:
   ml_network:
